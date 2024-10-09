@@ -1,0 +1,166 @@
+AULA 1 - 09/09
+
+Comandos básicos Debian Server:
+
+*não precisa usar SUDO*
+*Debian se usa SU*
+
+clear (limpar tela)
+shutdown -h now (desligar servidor)
+apt update (atualizar repositorio)
+apt install vim (instalar editor de texto VIM)
+pwd (verificar o diretório atual)
+reboot (reinicia o servidor)
+exit (deslogar)
+
+______________________________________________________
+
+Personalização do servidor:
+
+apt install linuxlogo (instalar apk de informações do hardware - versão Linux - etc..)
+cd /etc (cd*acessar diretório - /etc*diretório de configuração no Linux)
+ls issue* (ls*listar conteúdo - issue*arquivo de configuração de tela de login no Linux)
+cp issue issue.bkp (cp *comando para copiar - issue* fazer backup - issue.bkp*nome do backup)
+rm issue (rm* remover arquivo - issue*nome do arquivo)
+cp issue.linuxlogo issue (renomear issue.linuxloo para issue)
+
+_______________________________________________________
+
+AULA 02 - 11/09
+
+Configuração da rede (cenário)
+
+cd /etc/network (cd *acessar diretório*)
+cp interfaces interfaces.old (cp *copiar* interfaces *arquivo* interfaces.old *nome do novo arquivo
+vim interfaces (editar arquivo *interfaces)
+
+# LAN
+allow-hotplug enp0s8
+iface en0s8 inet static
+address 192.168.0.1/24
+
+cat interfaces (lista conteudo do arquivo vim sem entrar nele *interfaces)
+systemctl restart networking (*reiniciar serviço de rede*)
+
+________________________________________________________
+
+Configuração do serviço de DHCP (Servidor de IPs)
+
+apt update
+apt install isc-dhcp-server (*instalar servidor dhcp)
+systemctl status isc-dhcp-server (*verificar status)
+ip link show (*verificar as interfaces de rede)
+
+1º configurar a interface LAN para o DHCP
+cd /etc/default
+# fazer uma cópia do arquivo de configuração
+cp isc-dhcp-server isc-dhcp-server.old (*old significa o nome da cópia)
+
+vim isc-dhcp-server
+INTERFACES="enp0s8" (*verificar antes a interface)
+INETERFACESv4="enp0s8" (editar arquivo e colocar essa interface)
+
+cd etc/dhcp
+
+cp dhcpd.conf dhcpd.conf.old (*fazer uma copia e criar um backup)
+
+vim dhcpd.conf
+#linha 7 - mudar o nome do dominio / alterar para "localhost"
+#linha 8 - colocar ip do gateway do servidor / alterar para 192.168.0.1
+#linha 35 - subnet / colocar o ip da rede 192.168.0.0 e a mascara 255.255.255.0
+#linha 36 - range / colocar a quantidade de ips para o dhcp fornecer 192.168.0.100 até 192.168.0.200
+#linha 37 - colocar o gateway do servidor 192.168.0.1
+
+reiniciar o sistema - systemctl restart isc-dhcp-server.service
+verificar o status do sistema - systemctl status isc-dhcp-server.service
+
+_______________________________________________________
+
+AULA 03 - 13/09
+
+Ativar o SSH - (no Debian por padrão apenas usuarios podem se conectar remotamente no servidor)
+
+No Putty digitar o IP do Servidor (192.168.0.1)
+Entrar com usuario / senac 
+Digitar "su" para entrar em modo root
+________________________________________________________
+
+DNS (Domain Name Server)
+
+apt install dnsmasq (instalar dns)
+systemctl status dnsmasq
+cd /etc
+ls dnsmasq*
+mv dnsmasq.conf dnsmasq.conf.old (mv *renomeia*)
+vim dnsmasq.conf
+
+# LAN
+interface=enp0s8
+bind-interfaces
+
+# DNS Upstream
+server=8.8.8.8
+server=8.8.4.4
+
+# cache
+cache-size=1000
+
+*salvar = :x
+
+systemctl restart dnsmasq
+systemctl status dnsmasq
+
+________________________________________________________
+
+FIREWALL
+NETFILTER (configurações)
+
+cd /etc
+Arquivo de configuração dos modulos netfilter (firewall)
+cp sysctl.conf sysctl.conf.old
+vim sysctl.conf
+
+linha 28 = *descomentar*
+
+*salvar = :x
+
+cd /etc
+ls nftables*
+cp nftables.conf nftables.conf.old
+vim nftables.conf
+
+apagar a partir da linha 5 
+table ip nat {
+        chain postrouting {
+                type nat hook postrouting priority 100;
+                policy accept;
+                oif "enp0s3" masquerade
+        }
+}
+
+*salvar = :x
+
+systemctl restart nftables
+systemctl status nftables
+systemctl enable nftables
+systemctl status nftables
+
+verificar se a internet está funcionando na maquina
+
+BLOQUEANDO SITES
+
+cd /etc
+vim dnsmasq.conf
+
+adicionar antes da #cache =
+# Bloqueio de sites (black list)
+address=/netflix.com/0.0.0.0
+address=/facebook.com/0.0.0.0
+
+*salvar = :x
+
+systemctl restart dnsmasq
+
+verificar se bloqueou a lista de sites
+
+
